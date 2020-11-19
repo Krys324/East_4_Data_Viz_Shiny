@@ -97,41 +97,45 @@ ui <- navbarPage("City of South Bend",
                                                  ),
                                                  mainPanel(leafletOutput(outputId = "own"))
                                                )
-                          ),
-                          tabPanel(title = "By Pole Type",
-                                   sidebarLayout(
-                                     sidebarPanel(
-                                       selectInput(inputId = "Pole_Type",
-                                                   label = "Choose a Streetlight Pole Type:",
-                                                   choices = c("ALL", unique(sl_read$Pole_Type)),
-                                                   selected = "ALL")
-                                     ),
-                                     mainPanel(leafletOutput(outputId = "pole"))
-                                   )),
+                                              ),
+                                        tabPanel(title = "By Pole Type",
+                                                 sidebarLayout(
+                                                   sidebarPanel(
+                                                     selectInput(inputId = "Pole_Type",
+                                                                 label = "Choose a Streetlight Pole Type:",
+                                                                 choices = c("ALL", unique(sl_read$Pole_Type)),
+                                                                 selected = "ALL")
+                                                   ),
+                                                   mainPanel(leafletOutput(outputId = "pole"))
+                                                  )
+                                                 ),
                           mainPanel(leafletOutput(outputId = "ownl"))
                           ))# end of tabpanel #4
                  
                  
 )#End UI
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
+# Define Server
+server <- function(input, output) {#
+  #Schools Tab
+  #Selector
   schools.subset <- reactive({
     if (input$SchoolType == "ALL"){
       rtrn <- schools
-    }
+      }
     else{
       rtrn <- schools[schools$SchoolType == input$SchoolType,]
-      
-    }
+      }
     return(rtrn)
   })
   
-  
+  #Map
   output$mymap <- renderLeaflet({
     mybins = c(0,300,600,900,1200,1500,1800,2100)
-    pal <- colorFactor(c("cadetblue", "sienna2"), domain = c("Private","Public"))
-    pal2 <- colorBin(palette = 'YlGn', domain = sb$estimate, bins=mybins)
+    pal <- colorFactor(c("cadetblue", "sienna2"),
+                       domain = c("Private","Public"))
+    pal2 <- colorBin(palette = 'YlGn',
+                     domain = sb$estimate, bins=mybins)
     leaflet() %>% 
       addTiles() %>% 
       addPolygons(data = sb,
@@ -163,89 +167,109 @@ server <- function(input, output) {
     
   }) # end of schools
   
+  #Facilities Tab
+  #Selector
   facilities.subset <- reactive({
     if (input$POPL_TYPE == "ALL"){
       rtrn <- facilities
-    }
+      }
     else{
       rtrn <- facilities[facilities$POPL_TYPE == input$POPL_TYPE,]
-      
-    }
+      }
     return(rtrn)
   })
   
+  #Map
   output$mymap_HB <- renderLeaflet({
     facilities.spatial <- facilities.subset() %>% 
       st_as_sf(coords = c("Lon","Lat")) %>% 
       st_set_crs(value = 4326)
-    pal3 <- colorFactor(c("coral", "burlywood4","cadetblue"), domain = c("FIRE STATION", "LIBRARY", "POLICE STATION"))
-    
+    pal3 <- colorFactor(c("coral", "burlywood4","cadetblue"),
+                        domain = c("FIRE STATION", "LIBRARY", "POLICE STATION"))
     facilities.spatial$popup <- paste("<b>",facilities.spatial$POPL_NAME,"</b><br>",
                                       facilities.spatial$POPL_ADDR1, sep ="")
     leaflet()  %>%
       addTiles()  %>%
-      addCircleMarkers(data = facilities.spatial,radius = 3,
+      addCircleMarkers(data = facilities.spatial,
+                       radius = 3,
                        color = ~pal3(POPL_TYPE),
-                       stroke = FALSE, fillOpacity = 1, popup = ~popup) %>% 
-      addLegend("bottomright",pal=pal3, values = facilities.spatial$POPL_TYPE, title = "Type of Public Facilities",opacity = 1)
+                       stroke = FALSE, 
+                       fillOpacity = 1,
+                       popup = ~popup) %>% 
+      addLegend("bottomright",
+                pal=pal3,
+                values = facilities.spatial$POPL_TYPE,
+                title = "Type of Public Facilities",
+                opacity = 1)
   }) #end of facilities
   
-  
+  #Abandoned Facilites Tab
+  #Selector
   abandoned.subset <- reactive({
     if (input$Outcome_St == "ALL"){
       rtrn <- abandoned
-    }
+      }
     else{
       rtrn <- abandoned[abandoned$Outcome_St == input$Outcome_St,]
-      
-    }
+      }
     return(rtrn)
   })
   
+  #Map
   abandoned$popup <- paste("Outcome Status: ",abandoned$Outcome_St,"<br>",
                            "Date of Outcome: ",abandoned$Date_of_Ou,"<br>",
                            "Council District: ",abandoned$Council_Di,"<br>",
                            "Code Enforcement : ",abandoned$Code_Enfor,"<br>",
                            "Structures: ",abandoned$Structures,"<br>")
   
-  
   output$mymap_mel <- renderLeaflet({
     abandoned.spatial <- abandoned.subset() %>% 
       st_as_sf(coords = c("Lon","Lat")) %>% 
       st_set_crs(value = 4326)
-    pal4 <- colorFactor(c("coral3", "burlywood4","cadetblue","grey33","sienna2","goldenrod"), domain = c("Deconstructed", "Demolished", "Occupied & Not Repaired", "Repaired","Repaired & Occupied","Unknown"))
+    pal4 <- colorFactor(c("coral3", "burlywood4",
+                          "cadetblue","grey33",
+                          "sienna2","goldenrod"),
+                        domain = c("Deconstructed", "Demolished", 
+                                   "Occupied & Not Repaired", "Repaired",
+                                   "Repaired & Occupied","Unknown"))
     leaflet()  %>%
       addTiles()  %>%
-      addPolygons(data = abandoned.spatial, color = ~pal4(Outcome_St), popup = ~popup ,weight = 1, smoothFactor = 0.5,
-                  opacity = 1.0, fillOpacity = 0.5) %>%
-      addLegend("bottomright",pal=pal4, values = abandoned.spatial$Outcome_St, title = "Property Status",opacity = 1)
+      addPolygons(data = abandoned.spatial, 
+                  color = ~pal4(Outcome_St),
+                  popup = ~popup,
+                  weight = 1,
+                  smoothFactor = 0.5,
+                  opacity = 1.0,
+                  fillOpacity = 0.5) %>%
+      addLegend("bottomright",
+                pal=pal4,
+                values = abandoned.spatial$Outcome_St,
+                title = "Property Status",
+                opacity = 1)
   }) # end of Abandoned Properties
   
-  
-  # leafletOutput(outputId = "map")
-  
-  
-  
+  #Street Lights Tab
+  #Selector 1 
   lights.subset1 <- reactive({
     if (input$Ownership == "ALL"){
       rtrn <- sl_read
-    }
+      }
     else{
       rtrn <- sl_read[sl_read$Ownership == input$Ownership,]
-      
-    }
+      }
     return(rtrn)
   })
+  #Selector 2
   lights.subset2 <- reactive({
     if (input$Pole_Type == "ALL"){
       rtrn <- sl_read
-    }
+      }
     else{
       rtrn <- sl_read[sl_read$Pole_Type == input$Pole_Type,]
-      
-    }
+      }
     return(rtrn)
   })
+#Map 1
   sl_read$popup <- paste("Pole Number: ",sl_read$Pole_Num_1,"<br>",
                          "Ownership: ",sl_read$Ownership,"<br>",
                          "Type : ",sl_read$Pole_Type,"<br>",
@@ -254,31 +278,47 @@ server <- function(input, output) {
                          "Wattage: ",sl_read$Wattage,"<br>",
                          "Lumens: ",sl_read$Lumens,sep ="")
   output$pole <-  renderLeaflet({
-    
-    pal5 <- colorFactor(c("coral3", "cadetblue","goldenrod","grey33","sienna2","burlywood4"), domain = c("Wood", "Metal", "Fiberglass", "Concrete", "Aluminum", "Unknown"))
-    
-    
+    pal5 <- colorFactor(c("coral3", "cadetblue",
+                          "goldenrod","grey33",
+                          "sienna2","burlywood4"), 
+                        domain = c("Wood", "Metal", 
+                                   "Fiberglass", "Concrete", 
+                                   "Aluminum", "Unknown"))
     leaflet(lights.subset2())  %>%
       addTiles()  %>%
       addCircleMarkers(radius = 1.5,
-                       stroke = FALSE, fillOpacity = 1, color = ~pal5(lights.subset2()$Pole_Type), popup = ~ popup)  %>%
+                       stroke = FALSE,
+                       fillOpacity = 1,
+                       color = ~pal5(lights.subset2()$Pole_Type),
+                       popup = ~ popup)  %>%
       addControl("<b>Streetlights in South Bend</b><br>Click on Dots for Details", 
                  position = "topright") %>%
-      addLegend("bottomright", pal = pal5, values = ~lights.subset2()$Pole_Type, title = "Type of Streetlight Poles",opacity = 1)
-  })  
+      addLegend("bottomright",
+                pal = pal5,
+                values = ~lights.subset2()$Pole_Type,
+                title = "Type of Streetlight Poles",
+                opacity = 1)
+  }) 
+  #Map 2
   output$own <-  renderLeaflet({
-    pal4 <- colorFactor(c("coral3", "cadetblue", "burlywood4","grey33"), domain = c("AEP", "City of South Bend", "Other", "Unknown"))
-    
+    pal4 <- colorFactor(c("coral3", "cadetblue",
+                          "burlywood4","grey33"),
+                        domain = c("AEP", "City of South Bend", "Other", "Unknown"))
     leaflet(lights.subset1())  %>%
       addTiles()  %>%
-      addCircleMarkers(    radius = 1.5,
-                           stroke = FALSE, fillOpacity = 1, color = ~pal4(lights.subset1()$Ownership), popup = ~ popup)  %>%
+      addCircleMarkers(radius = 1.5,
+                       stroke = FALSE,
+                       fillOpacity = 1,
+                       color = ~pal4(lights.subset1()$Ownership),
+                       popup = ~ popup)  %>%
       addControl("<b>Streetlights in South Bend</b><br>Click on Dots for Details", 
                  position = "topright") %>%
-      addLegend("bottomright", pal = pal4, values = ~lights.subset1()$Ownership, title = "Ownership of Streetlights",opacity = 1)
-    
-    
-  }) #end of street lights
+      addLegend("bottomright",
+                pal = pal4,
+                values = ~lights.subset1()$Ownership,
+                title = "Ownership of Streetlights",
+                opacity = 1)
+ }) #end of street lights
   
   
 }# end of the server
